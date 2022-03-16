@@ -1,0 +1,178 @@
+#!/bin/zsh
+
+
+#fnc_init()
+#{
+#declare -g infofields
+# declare -g sweep_pid=0
+#declare -g fnc_pid=0
+#   infoflds = ( 'FoundHackRF' 'NoHackRF' 'Serialnumber' )
+#source ~/.alias
+# outfile=/Users/ed/dev/scripts/output.log
+#   dbgfile=/Users/ed/dev/scripts/dbg.log
+#}
+
+#fnc_contains() {
+#    [[ $1 =~ (^|[[:space:]])$2($|[[:space:]]) ]] && echo 1 || echo 1
+#}
+
+fnc_isconnected()
+{
+    infoflds = ( 'FoundHackRF' 'NoHackRF' 'Serialnumber' )
+    for rstatus in $(hackrf_info 2>/dev/null | awk -F'[ ]' '{print $1$2 }'); do
+        echo $rstatus
+        if [ ! -z $retval ]; then
+            echo "retval=$retval break"
+            break;
+        elif [ $infoflds =~ (^|[[:space:]])$rstatus($|[[:space:]]) ]; then
+            echo "retval=$rstatus break"
+            retval=$rstatus
+            break;
+        fi
+    done
+    echo $retval
+}
+
+fnc_sweep()
+{
+    swppid=$1
+    monpid=$2
+#fnc_init
+    echo "Calling hackrf_sweep! swppid=$swppip  monpid=$monpid"
+#ks;fg;ks;fg
+    hackrf_sweep -f 350:5600  2>/dev/null | awk -F'[ ]' '/ -4/ || / -3/ || / -2/ || / -1. /  {print $2, $3, $4, $7, $8, $9, $10}' &
+    swppid="$!"
+    export SWPPID=$swppid
+
+    echo "sweep swppid = $swppid"
+    echo "sweep Calling fnc_monitor_pid for sweep pid: $swppid"
+    fnc_monitor_pid
+#$swppid 
+    monpid="$!"
+    echo "swppid=$swppid"
+    swppid="$swppid"
+    echo "sweep \$\$= $$"
+    echo "sweep MonPid $monpid"
+}
+
+#array_contains () {
+#local seeking=$1; shift
+#local in=1
+#for element; do
+#if [[ $element == "$seeking" ]]; then
+#in=0
+#break
+#fi
+#done
+#return $in
+#}
+
+fnc_monitor_pid () {
+ 
+#infoflds = ( 'hackrf_infoversion' 'libhackrfversion' 'FoundHackRF' 'NoHackRF' 'Serialnumber' )
+#argswppid = $1
+    echo "Monitoring hack rf sweep status"
+    found_hackrf=1
+    run_hackrf=1
+    while [[ "$run_hackrf" == 1 && "$found_hackrf" == 1 ]]; do
+        echo "while run_hackrf $run_hackrf == 1 && found_hackrf $found_hackrf == 1 "
+        for rstatus in $(hackrf_info | awk -F'[ ]' '{print $1$2 }'); do  
+            echo $rstatus
+            echo "parse hacfrf_info response."
+            echo "field: $rstatus"
+            for stat in $infoflds; do
+                if [[ $rstatus -eq "$stat" ]]; then
+                    echo "parse hacfrf_info response."
+
+                    if [ $rstatus -eq "FoundHackRF" ]; then
+                        echo "found hacfrf_info response."
+                        fndhrf_pid=`ps -ef | grep sweep`
+                        if [ "$fndhrf_pid" == "$sweep_pid" ]; then
+                            echo "Current Monitored Sweep PID: $sweep_pid"
+                            found_hackrf=1
+                    #       wait $sweep_pid
+                            echo "Detected a change state on the HackRF PID: $sweep_pid."
+                            fndhrf_pid=`pgrep sweep`
+                            if [ -z $fndhrf_pid ]; then
+                                echo "No Sweep PID found."
+                                found_hackrf=0
+                            else
+                                echo "Detected a new HackRF PID: $fndhrf_pid."
+                            fi
+                        elif [ -z $fndhrf_pid ] || [ $fndhrf_pid != "$sweep_pid" ]; then
+##                  Are we monitoring a new instance of HackRf? (PID)
+                            echo "Monitored Sweep PID was: $sweep_pid"
+                            found_hackrf=0
+                            echo "Detected a new HackRF PID: $fndhrf_pid."
+                        elif [ -z $fndhrf_pid ]; then 
+                            fndhrf_pid=`pgrep sweep`
+                            if [ -z $fndhrf_pid ]; then
+                                echo "No Sweep PID found."
+                                found_hackrf=0
+                            fi
+                            echo "Expecting PID: $sweep_pid"
+                        fi
+                    elif [ $status -eq "NoHackRF" ]; then
+                        echo "NoHack found! quiting"
+                        foundhackrf=0
+                    fi
+                fi
+            done
+        done
+    done
+    echo "we are leaving hte monitor."
+    if [ "$run_hackrf" == 0 ]; then
+        echo "HackRF Shutdown requested."
+    fi
+
+    echo "monitor done."
+}
+
+
+
+fnc_stop_sweep () {
+
+    run_hackrf=0
+    echo "sweep pid: $SWPPID"
+    kill -9 "$SWPPID"
+//    kill $(jobs -p)
+}
+
+fnc_start_sweep ()
+{
+    echo "Starting Hack RF Sweep!"
+    fnc_init
+    fnc_sweep SWPID MONPID
+    rpid=$SWPID
+    monpid=$MONPID
+    pid1="$$"
+    monpid="$!"
+    echo "Sweep Pid main $rpid"
+    echo "Mon Pid main $monpid"
+    echo "main \$\$= $$"
+    echo "main export SWPPID= $SWPPID"
+    epid=$SWPPID
+
+    echo "main \$\!= $!"
+    monpid = "$!"
+
+    echo "Running sweep fnc PID= $rpid sweep exec PID= $epid"
+    trap_ctrlc() {
+        echo -e "\nkill=$? (0 = success)\n"
+    wait $monpid
+    echo "wait=$? (the exit status from the background process)"
+    echo -e "\n\ntrap_ctrlc\n\n"
+    }
+
+    trap trap_ctrlc INT
+
+    echo "wait on mpid $monpid"
+
+    wait "$monpid"
+    echo "done waiting on mpid: $monpid"
+
+    fnc_stop_sweep $epid
+    echo "Done Waiting on SWP+PIDRunning start sweep FNCPID= $epid  SWPPID=$rpid"
+}
+
+"$@"

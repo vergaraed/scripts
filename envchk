@@ -1,0 +1,41 @@
+#!/bin/zsh
+
+fn_validate_gcc_env_var()
+{
+    # Sanity Check pattern of GCC env vars
+    echo "#####################"
+    echo "##\t\t${en}    ##"
+    echo "######################"
+
+    envvarnm=$1;
+    envval=$2;
+
+    if [ envval has":" ]; then
+        #split into separate values
+        CC_LIB_FLAGGED=$(echo $envval| awk -F'\:' '{ flg=""; for (i=1; i <= NF; i++) flg=flg "-L"$i" "; print flg }')
+    elif [ envpath has -L or -I ]; then
+        #split into separate values
+    fi
+
+    echo "######################"
+    echo "##\tvar=\n${envvar}\t##"
+    echo "##\tval=\n${envval}\t##"
+    echo "######################"
+    if [ `ls $envpath 2>/dev/null|wc -l` -gt 0 ]; then
+        envvargood[$envvar]=$envpath
+    else
+        envvarbad[$envvar]=$envpath
+    fi
+done
+
+echo "#########  GOOD VALUE:(${#envvargood[@]})  ############"
+for key val in "${(@kv)envvargood}"; do
+    echo "$key -> $val"
+done
+echo ;
+echo;
+
+echo "#########  BAD VALUES:(${#envvarbad[@]}) ############"
+for key val in "${(@kv)envvarbad}"; do
+    echo "$key -> $val"
+done

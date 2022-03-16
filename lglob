@@ -1,0 +1,76 @@
+#!/bin/zsh
+
+# Starting to automate tasks using scripts to increase productivity
+# loadglog. 
+# Copywrite Ed Vergara BlockchainBPI
+$dictionary = array();
+$docCount = array();
+
+foreach (glob("$HOME/.*") as $alias_cache) {
+
+    $lines = file($filename)
+foreach($lines as $line)
+
+    $value = file_get_contents($alias_cache);
+    ...
+}
+
+foreach (glob($HOME/.alias_cache*) as $alias_cache_file) {
+    $value = file_get_contents($alias_cache_file);
+    $dictionary = array();
+    $docCount = array();
+
+    foreach($file as $docID=> $value) {
+        echo $value;
+        $terms = explode(' ', $doc);
+        $docCount[$docID] = count($terms);
+
+        foreach($terms as $term) {
+            if(!isset($dictionary[$term])) {
+                $dictionary[$term] = array('df' => 0, 'postings' => array());
+            }
+            if(!isset($dictionary[$term]['postings'][$docID])) {
+                $dictionary[$term]['df']++;
+                $dictionary[$term]['postings'][$docID] =     array('tf' => 0);
+            }
+
+            $dictionary[$term]['postings'][$docID]['tf']++;
+        }
+    }
+}
+$temp = array('docCount' => $docCount, 'dictionary' => $dictionary);
+
+filename=$HOME/.alias_cache
+source ~/.zshrc
+foreach(glob() as $filename) 
+    $lines = file($filename) 
+    foreach($lines as $line)
+
+
+    
+    
+    while :; 
+    do 
+        echo "Loading Aliases..";
+        for iterAliascachefile *
+            iterAliascachefile.split(',');
+            iterAliascachefile.split(',');
+            echo "$keyvalpair[0] = $keyvalpair[1]";
+            keyvalpair=iterfiles.split(',');
+            arrays[$keyvalpair[0]] = $keyvalpair[1];
+       # ls -al "$1"
+        lsd --color=auto
+        ll "$1" # 2>/dev/null; 
+        echo $1 2>/dev/null;
+        echo `date`;
+        sleep 2; 
+    done
+
+
+
+# while :                                                                            
+# {
+#     do
+# 
+#     ll r86_64-apple-darwin21.3.0 2>/dev/null; echo x86_64-apple-darwin21.3.0 2>/dev    /null;echo `date`;sleep 2; done
+

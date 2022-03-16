@@ -1,0 +1,116 @@
+#!/bin/zsh
+# The environ style is used when completing for `sudo'.
+# It is set to an array of
+# `VAR=value' assignments to be exported into the
+# local environment before the completion
+# for the target command is invoked.
+
+#zstyle ':completion:*:sudo::' environ
+#PATH="/sbin:/usr/sbin:$PATH"
+#HOME="/root"
+# !/usr/bin/env -S expect -f
+
+#init ()
+#{
+#    log_user 0
+#    puts "Spawning '$argv'"
+#    spawn {*}$argv
+#    expect *foo*
+#    {
+#        puts "Got: '[string trim $expect_out(buffer)]'"
+        # run sanity check on the validity
+#    }
+
+#    for x in `env -i | grep "^C*" | 'awk -F= '{ print $EnVal:$2 }'` ;
+
+#    echo '$echo  ${x}'
+
+#    }
+#}
+
+#precmd () {
+#if [[ $SOME_VAR == "prod" ]]; then
+#echo "doSomething"
+#else 
+#        echo "Lib for append and insert PATH with dupe checks."
+#fi
+#}
+
+insertenv () {
+    echo "insertenv argennm=$1  argenvl=$2"
+    local EnVarNm = "$(echo $1)"
+    local EnVal = $2
+    echo "insertenv EnVarNm = $EnVarNm"
+    echo "insertenv EnVal = $EnVal"
+
+    if [ -d "$EnVal" ] && [[ ":$EnVarNm:" != *":$EnVal:"* ]]; then
+        eval $EnvVarNm="$EnVal${EnvVarNm:+":$EnvVaNm"}"
+    fi
+}
+
+appendenv () {
+    echo "appendenv "
+    curEnvVar = "\$($1)"
+    curEnvVal = $($1)
+    newEnvVal=$2
+    echo "$curEnvVar = $curEnvVal"
+    echo "Appendind_${curEnvVar} = $newEnvVal"
+    echo "appendenv argennm=${!1} argenvl=$2"
+    local EnVarNm = ${!1}
+    local EnVal = $2
+    echo "appendenv EnVarNm = $EnVarNm"
+    echo "appendenv EnVal = $EnVal"
+    $EnvVarNm="${$EnVarNm:+"$EnVarNm:"}$EnVal"
+    if [ -d "$EnVal" ] && [[ ":$EnVarNm:" != *":$EnVal:"* ]]; then
+        eval $EnvVarNm="${$EnVarNm:+"$EnVarNm:"}$EnVal"
+    fi
+}
+
+setenv () {
+    echo "setenv \$($1)"
+    curEnvVar = "$($1)"
+    #Make sure this is a legit set op and we are not wacking a populated var.
+    curEnvVal = $($1)
+    newEnvVal=$2
+    echo "$curEnvVar = $($curEnvVal)"
+    echo "New_${curEnvVar} = $newEnvVal"
+#eval "$CurEnVal="${$CurEnVal:+"
+#echo "2-  \$1 = $1"
+    if [ -d "$newEnvVal" ] && [[ ":$curEnvVal:" != *":$newEnvVal:"* ]]; then
+        echo "Adding Env Var:";
+        eval $curEnvVar="$CurEnVal";
+    fi
+}
+
+#   echo "7 -eval export $1=$2"
+#    eval export $1=$2
+#    env | grep "PREFIX"
+#    echo "9 -eval export $1=$2"
+#    echo "10-export eval export $1=$2"
+#    echo "11-addenv argennm=$1  argenvl=$2"
+#    echo "12-echo PREFIX: $PREFIX "
+#    env | grep "PREFIX"
+#}
+
+insertpath () {
+    if [ -d "$1" ] && [[ ":$PATH:" != *":$1:"* ]]; then
+        PATH="$1${PATH:+"$PATH"}"
+    fi
+}
+
+appendpath() {
+    if [ -d "$1" ] && [[ ":$PATH:" != *":$1:"* ]]; then
+        PATH="${PATH:+"$PATH:"}$1"
+        #    PATH= $PATH = {:/bin;usr/bin/;}/opt/bin/
+    fi
+}
+
+# Expand the variable named by $1 into its value. Works in both {ba,z}sh
+# eg: a=HOME $(var_expand $a) == /home/me
+var_expand() {
+  if [ "$#" -ne 1 ] || [ -z "${1-}" ]; then
+    printf 'var_expand: expected one non-empty argument\n' >&2;
+    return 1;
+  fi
+  eval printf '%s' "\"\${$1?}\""
+}

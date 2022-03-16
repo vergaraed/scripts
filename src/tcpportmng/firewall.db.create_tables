@@ -1,0 +1,60 @@
+CREATE TABLE [IF NOT EXISTS] [firewall.db].iplist (
+
+	table_col_names
+    id auto_increment int PRIMARY KEY
+    ip bytes(4) PRIMARY KEY,
+    port int NOT NULL
+    sessionId int DEFAULT 0,
+
+	table_constraints
+    CONSTRAINT CHK_Port CHECK(Port >=0 AND Port <= 65535)
+) [WITHOUT ROWID];
+
+
+CREATE TABLE [IF NOT EXISTS] [firewall.db].iptables (
+
+	table_col_names
+    id integer PRIMARY KEY AUTOINCREMENT
+    id_domain int not null 
+    id_user int not null
+    id_vm int default NULL
+    remote_ip char(16) not null,
+    time_req datetime not null,
+    time_deleted datetime, 
+    iptables varchar(255) not null,
+);
+
+
+CREATE TABLE [IF NOT EXISTS] [firewall.db].domain_ports (
+    table_col_names
+    id integer NOT NULL PRIMARY KEY AUTOINCREMENT
+    id_domain integer DEFAULT NULL
+    public_port integer DEFAULT NULL
+    internal_port integer DEFAULT NULL
+    name varchar(32) DEFAULT NULL
+    restricted integer DEFAULT 0
+
+	table_constraints
+    CONSTRAINT CHK_Port CHECK(Port >=0 AND Port <= 65535)
+    UNIQUE (id_domain,internal_port)
+    UNIQUE (id_domain,name)
+    UNIQUE (public_port)
+);
+
+
+CREATE TABLE [IF NOT EXISTS] [firewall.db].networks (
+	table_col_names
+    id integer NOT NULL PRIMARY KEY AUTOINCREMENT
+    name varchar(32) NOT NULL
+    address varchar(32) NOT NULL
+    description varchar(140) DEFAULT NULL
+    all_domains integer DEFAULT '0'
+    no_domains integer DEFAULT '0'
+    requires_password integer DEFAULT '0'
+    n_order integer DEFAULT '0'
+
+    table_constraints
+    CONSTRAINT CHK_Port CHECK(Port >=0 AND Port <= 65535)
+    unique(address)
+);
+

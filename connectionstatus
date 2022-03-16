@@ -1,0 +1,15 @@
+#!/bin/zsh
+   
+#source /Users/ed/.env/env_safemode
+
+infoflds=("FoundHackRF" "NoHackRF" "Serialnumber")
+retval=0
+#for rstatus in $(hackrf_info 2>/dev/null | awk -F'[ ]' '{print $1$2 }'); do
+for rstatus in `hackrf_info | awk -F'[ ]' '{print $1$2 }'`; do
+    echo $rstatus
+    if [[ " ${infoflds[*]} " =~ " ${rstatus} " ]]; then
+        retval=$rstatus
+        break;
+    fi
+done
+echo $retval
