@@ -2,10 +2,14 @@
 
 declare -A pfKVpr
 declare cfgFileNm=/etc/pf.conf
+declare cfgBlockAllFileNm=/etc/pf.eds.conf
+declare cfgBlockListFileNm=/etc/pf.blocklist.conf
+
 declare tstFileNm=/var/tmp/tst.conf
 declare fileNm=${cfgFileNm}
 declare watchpid=0
 declare watchpidfile=/var/run/pfctrl_cfg_restart.watchpid
+declare blockedlist=ipblocklist
 
 # trap ctrl-c and call ctrl_c()
 trap ctrl_c INT
@@ -24,6 +28,7 @@ killbg()
     if [ $watchpid -ne 0 ]; then
         echo "Killing tcpdump pid:($watchpid)"
         kill -9 ${watchpid}
+        echo "remove watchpidfile $watchpidfile"
         rm $watchpidfile
     fi
 
@@ -38,10 +43,10 @@ pfprint() {
 }
 
 print_all() {
-
   local p=$(printf "%-40s" $1)
   (
     pfprint r "$1" | sed "s,^,r     ,"
+    pfprint T "$1" | sed "s,^,T     ,"
     pfprint n "$1" | sed "s,^,n     ,"
     pfprint A "$1" | sed "s,^,A     ,"
   ) | sed "s,^,$p,"
@@ -51,11 +56,17 @@ print_all() {
   done
 }
 
+showblockedips()
+{
+    pfctl -t $blockedlist -T show
+}
+
 lockStatus()
 {
-# echo "lstat"
-
     lstatus="unknown"
+
+    showblockedips
+
     if [[ $(grep -o '^# *block[ ]*all' /etc/pf.conf) ]]; then 
         lstatus="unblocked" 
     elif [[ $(grep -o '^ *block[ ]*all' /etc/pf.conf) ]]; then
@@ -72,60 +83,56 @@ test()
     return 1
 }
 
-makecfgchanges()
-{
-    block=$1
-    if [ "$restartreq" -eq 0 ]; then
-        echo "restartreq = $restartreq"
-        return
-    fi
-    local res=$(lockStatus)
-    echo "res = $res"
-    if [ "$block" -eq 1 ]; then
-        if [[ $(lockStatus) == "unblocked" ]]; then 
-            echo "Block it"
-             sed -i '' 's/^#block all/block all/g' $fileNm
-        fi
-    else 
-        if [[ $(lockStatus) == "blocked" ]]; then
-            echo "Unblocking IP Traffic"
-             sed -i '' 's/^block all/#block all/g' $fileNm
-        fi
-    fi
-}
-
-reloadsettings()
-{
-    echo "ReloadSettings confirm the change request."
-    makecfgchanges $1
-
-#    while true; do
-#        read "Confirm to load settings and restart: " yn
-#        case ${yn} in
-#            [Yy]*)
-#                break;;
-#            [Nn]*) 
-#                echo "revertcfgchanges $1"
-#                break;;
-#            * )
-#                echo "Undefined response ${yn}, use: y or n."
-#                echo $yn
-#        esac
-#    done
-    if [[ $test ]]; then
-        test
-    else
-        pfctl -e -f ${fileNm}
-        #pfctl -a 'com.apple/block' -f ${fileNm} -e
-    fi
-
-    return 1
-}
-
 info()
 {
     echo "get pfctrl -s info"
     pfctl -s info
+}
+
+blockall()
+{
+    echo "blockall"
+    if [[ $(lockStatus) == "unblocked" ]]; then
+        echo "Block it"
+        sed -i '' 's/^#block all/block all/g' $fileNm
+    fi
+
+}
+unblockall()
+{
+    echo "unblockall"
+    if [[ $(lockStatus) == "blocked" ]]; then                                        
+        echo "Unblocking IP Traffic"
+        sed -i '' 's/^block all/#block all/g' $fileNm
+    fi
+}
+
+
+blockset()
+{
+    ip=$1
+    echo "blockset $ip" 
+    if [[ $ip == "all" ]]; then
+        echo "blockall $ip"
+        blockall
+    else
+        echo "blockset $ip"
+        pfctl -t $blockedlist -T add $ip
+        launchctl unload /Library/LaunchDaemons/macbook.blocklist.pf.plist
+        launchctl load /Library/LaunchDaemons/macbook.blocklist.pf.plist
+    fi
+}
+
+unblockset()
+{
+    IPDel=$1
+    if [[ $IPDel == "all" ]];then        
+        unblockall
+    else 
+        pfctl -t $blockedlist -T delete $IPDel
+        launchctl unload /Library/LaunchDaemons/macbook.blocklist.pf.plist
+        launchctl load /Library/LaunchDaemons/macbook.blocklist.pf.plist
+    fi
 }
 
 tcptail()
@@ -203,7 +210,7 @@ cfg_pfctlNetwork()
     kill=0
 #    echo "args in; ${@}"
 
-    while getopts "h?ubrtiwsiqk" opt; 
+    while getopts "h?u:b:rtiwsiqk" opt; 
     do
         case "$opt" in
 
@@ -213,14 +220,18 @@ cfg_pfctlNetwork()
             ;;
     
         u)
-            echo "Unblocking All Traffic"
+            IPDel=${OPTARG}
+            echo "Unblocking All Traffic $IPDel"
             unblock=1
+            echo "Unblocking $IPDel"
             restartreq=1
             ;;
     
         b)
-            echo "Blocking All Traffic"
+            IPAdd=${OPTARG}
+            echo "Blocking All Traffic $IPAdd"
             block=1
+            echo "Blocking $IPDel"
             restartreq=1
             ;;
     
@@ -269,7 +280,7 @@ cfg_pfctlNetwork()
     [ "${1:-}" = "--" ] && shift
     
     if [ $watch -eq 1 ]; then
-        echo "watch output file: /tmp/watch_output_$$"
+        echo "watch output file: /tmp/tcpdump_$$"
         tcptail
         echo "tcptail fnc call: watchpid=$!"
     elif [ $settings -eq 1 ]; then
@@ -280,13 +291,13 @@ cfg_pfctlNetwork()
         killbg
     fi
    
-    echo "block = $block"
-    echo "unblock = $unblock"
+    echo "block = $block ip=$IPAdd"
+    echo "unblock = $unblock ip=$IPDel"
 
     if [ $block -eq 1 ]; then
-        reloadsettings $block 
+        blockset $IPAdd
     elif [ $unblock -eq 1 ]; then
-        reloadsettings $block 
+        unblockset $IPDel
     fi
 
     if [ $settings -eq 1 ]; then

@@ -1,13 +1,16 @@
 #!/bin/zsh
 
 source ~/.zshrc
-
+cmd=$1
+expr=$2
+tmr=$3
+echo Command:   $cmd
+echo Expression:   $exp
+echo Every:     $tmr
 while :; 
     do 
-       # echo $1;
-       # ls -al "$1"
-        ll "$1" # 2>/dev/null; 
-        echo $1 2>/dev/null;
+        #ls -al "$expr"
+        $(cmd) "$expr"
         echo `date`;
-        sleep 2; 
+        sleep "$tmr" 
     done

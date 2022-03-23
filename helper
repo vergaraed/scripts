@@ -1,0 +1,67 @@
+#!/bin/bash
+
+
+pipedpidsbg()
+{
+    echo "pipedpidsbg"
+    echo "pipedpidsbg: $1"
+    pipedcmdstr=$1
+    echo "pipedpidsbg: \"${pipedcmdstr}\""
+    arrcmdstr=`sed 's/\| */\n/g'`
+    echo "arrcmdstr  =>  $arrcmdstr"
+    # Execute the entire piped cmd string in the bg
+    `$(pipedcmdstr)&`
+    #Get the PID for the parent shell
+    parentpidpipedcmdstr=$!
+    echo "parentpidpipedcmdstr => $parentpidpipedcmdstr"
+    jpids=`jobs`
+    echo "piped job pids => ${jpids[@]}"
+    idx=0
+    for jp in jpids;
+    do
+        echo "job: $jp"
+        strcmd="echo ${arcmdstr[$(idx++)]}"
+        arrCmdPids[$strcmd] = $jp
+        echo "$strcmd job pid: $jp"
+    done
+
+    echo "${arrCmdPids[@]}"
+}
+
+delimit_string()
+{
+    pipedcmdstr="${1}"
+    $pipedcmdstr&
+    seperator="${2}" 
+    # e.g. constructing regex, pray it does not contain %s
+ 
+#    for cmd in sed "s/ 
+    regex="$( printf "${separator}%s" "${foo[@]}" )"
+    regex="${regex:${#separator}}" # remove leading separator
+    echo "${regex}"
+}
+
+function ppid()
+{
+    local cpid="$1"
+    if [ -z $cpid ]
+    then
+        read -p "PID: " cpid
+    fi
+    echo $(ps -p ${cpid:-$$} -o ppid=)
+}
+
+function  _enum()
+{
+   ## void
+   ## (
+   ##    _IN $@ : [ array<string> ] list
+   ## )
+
+   local list=("$@")
+   local len=${#list[@]}
+
+   for (( i=0; i < $len; i++ )); do
+      eval "${list[i]}=$i"
+   done
+}

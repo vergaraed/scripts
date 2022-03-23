@@ -1,15 +1,86 @@
 #!/bin/zsh
-   
-#source /Users/ed/.env/env_safemode
 
-infoflds=("FoundHackRF" "NoHackRF" "Serialnumber")
+
+hackrfinfo()
+{
+    detendflds=("PartID" "NoHackRF" "hackrf_open")
+    retstatus=("ReadyToConnect" "Disconnected" "Busy")
+    
+    for rstatus in `hackrf_info 2>/dev/null | awk -F'[ ]' '{print $1$2 }'`; do
+        echo rstat -> $rstatus
+        if [[ " ${detendflds[*]} " =~ " ${rstatus} " ]]; then
+            if [[ $rstatus == *PartID* ]]; then 
+                retval="ReadyToConnect"
+            elif [[ $rstatus == *hackrf_open* ]]; then
+                retval="Busy"
+            elif [[ $rstatus == *NoHackRF* ]]; then
+                retval="Disconnected"
+            fi
+            break
+        fi
+    done
+    echo $retval
+}
+
+fnsweep () {
+    title=$1
+    declare -i connattmps=0
+    declare -i conn=0
+    declare -i maxconnretry=40
+    while [[ $connattmps -lt $maxconnretry ]];
+    do
+        hrfstat=$(hackrfinfo)
+        if [[ $hrfstat == *ReadyToConnect* ]]; then
+            echo "HackRF restart connecting..."
+            break
+        elif [[ $hrfstat == *Disconnected* ]]; then
+            echo "HackRF device disconnected..."
+            echo "sleep 5"
+            sleep 5
+        elif [[ $hrfstat == *Busy* ]]; then
+            echo "HackRF already connected - exiting"
+            return
+        fi
+        ((connattmps++))
+        echo "connection attemps = ${connattemps}"
+        if [[ $connattmps -eq ($maxconnretry-1) ]]; then
+            echo "Giving up after ${connattemps} connection attemps."
+            return
+        fi
+    done
+        
+    logfile=${HFSCN}/`date "+%Y%m%d%H%M%S"`_$title.log
+    echo "Outputting to $logfile"
+    touch $logfile
+    declare -i reconnect=0
+    hackrf_sweep -f 350:5600  2>/dev/null | awk -F'[ ,]+' '/ -4/ || / -3/ || / -2/ || / -1. /  {print $2, $3, $4, $7, $8, $9, $10}' > $logfile &
+
+    # Store Sweep PID
+    pipedpid=$(echo "$(jobs -p)" |awk -F'[ \+][+|-] | ' '    {print $3}')
+    echo $pipedpid > $hrfpidfile
+    echo "Started Sweep as pid. [$pipedpid]"
+
+    # Store Tail PID
+    tail -f ${logfile} &
+    echo $! > $tailpidfile
+
+    conn=0
+
+    while [[ -f $hrfpidfile ]] && [[ ! -z $(grep '[^[:space:]]' $hrfpidfile) ]] 
+    do
+        hrfstat=$(hackrfinfo)
+        echo "mon stat -> $hrfstat"
+        if [[ ! $hrfstat == *Busy* ]]; then
+            echo "sweepf running... ${logfile}"
+            sleep 5
+        elif [[ $hrfstat == *Disconnected* ]] || [[ $hrfstat == *ReadyToConnect* ]]; then
+            echo "restarting sweep $title"
+            ksweep
+            sweep $title&
+            return
+        fi
+    done
+}
+
 retval=0
-#for rstatus in $(hackrf_info 2>/dev/null | awk -F'[ ]' '{print $1$2 }'); do
-for rstatus in `hackrf_info | awk -F'[ ]' '{print $1$2 }'`; do
-    echo $rstatus
-    if [[ " ${infoflds[*]} " =~ " ${rstatus} " ]]; then
-        retval=$rstatus
-        break;
-    fi
-done
-echo $retval
+fnsweep $1

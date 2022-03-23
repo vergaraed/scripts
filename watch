@@ -1,0 +1,23 @@
+#!/bin/bash
+
+source ~/.zshrc
+tmr=$1
+shift
+cmd=("$@")
+echo Command:   $cmd
+echo Every:     $tmr
+#arr=("$@")
+
+#for i in "${arr[@]}";
+#do
+#echo "$i"
+#done
+while :; 
+do 
+    cmd=("$1")
+   cmd+=("$args")
+    echo "run ${cmd}"
+    $cmd 
+    echo `date`;
+    sleep $tmr 
+done

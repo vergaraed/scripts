@@ -1,0 +1,273 @@
+#!/bin/bash
+
+# Keep a sweep session alive by getting HackRF sates from the hackrf_info call
+
+source $SCRPTS/helper
+
+ERetIndex=(
+   e_PartID
+   e_NoHackRF
+   e_hackrf_open
+) && _enum "${ERetIndex[@]}"
+
+declare detendflds=("PartID" "NoHackRF" "hackrf_open")
+declare +i -r retstatus=("ReadyToConnect" "Disconnected" "Busy")
+
+declare -i connattmps=0
+declare -i conn=0
+declare -i maxconnretry=40
+declare -i restartdelaysec=3
+declare -i exitscript=0
+declare title
+declare filename
+declare file_name
+declare logfile
+declare datadir=${HFSCN}
+declare hrfpidfile=/var/run/sweepf-hrfsp.pid
+
+hackrfinfo()
+{
+    if [[ $test = 1 ]]; then
+        echo ReadyToConnect Disconnected Busy
+    fi
+    for rstatus in `hackrf_info 2>/dev/null | awk -F'[ ]' '{print $1$2 }'`; do
+        if [[ " ${detendflds[*]} " =~ " ${rstatus} " ]];
+        then
+            echo $retstatus[e_$rstatus]
+        else
+            echo $rstatus
+        fi
+    done
+}
+
+showhelp()
+{
+	echo "Usage:
+
+    ${0##*/}  [-h][-k [all]][-n][-r #][-c #][-s][-t][-w][-d datadir][-f]
+Options:
+
+    -h, --help
+        display this help and exit
+
+    -k, --killsweep [all]
+        kills the stored sweep pid, all kills all running sweep and tail pids
+
+    -n, --noreconnect
+        dont attempt to reconnect. just exit the application.
+    
+    -r, --restartdelay #
+        number of seconds to delay the start of the sweep service.
+    
+    -c, --maxconnretr #
+        maximum number of reconnect attempts prior to giving up and exiting.
+    
+    -s, --show
+		show currently running detailed settings
+
+    -t, --test
+		testing the script with watch script calling a recursive ls
+
+    -w, --watch
+        watch tcpdump with the currently activated settings in pf.config file
+
+    -d, --datadir
+        change data result output directory path. ($HFSCN=~/dev/sdr/hackrf/data/sweeps/
+
+    -f, --filename
+        data filename if not date timestamped
+		"
+}
+
+init()
+{
+	echo "Init"
+	while getopts "htknr:c:d:f:" flag; do
+		case "$flag" in
+			h)  showhelp
+				exitscript=1
+				return;;
+			t)  test=1;;
+			k) 	echo "ksweep flag 1 $1 2 $2"
+				ksweep $2
+				exitscript=1
+				return;;
+			n)  reconnect=0;;
+			r)  restartdelaysec=$OPTARG;;
+			c)  maxconnretry=$OPTARG;;
+			d)  datatdir=$OPTARG;;
+			f)  file_name=$OPTARG;;
+		esac
+	done
+
+	echo "shift"
+	shift $((OPTIND - 1))
+	echo "title $1"
+	if [[ ! -z $1 ]]; then
+		title=$1
+	fi
+	echo "title $title"
+	
+	#delayed start setting
+	echo "delayed start setting"
+	if [[ ! -z $2 ]] && [[ @2 =~ ^[0-9]+$ ]] ; then
+		restartdelaysec=$2
+    fi
+	
+	#delayed start
+	if [[ ! -z $restartdelaysec ]]; then
+		sleep $restartdelaysec
+	fi
+}
+
+startingup()
+{
+	echo "startingup"
+
+	if [[ ! -z $file_name ]]; then
+		filename=$file_name
+	else
+		filename=`date "+%Y%m%d%H%M%S"`
+	fi
+
+	echo "filename = $filename"
+
+	if [[ ! -z $title ]]; then
+    	logfile=${datadir}/${filename}_$title.log
+	else
+		logfile=${datadir}/${filename}.log
+	fi
+}
+
+sweepf()
+{
+	echo "sweepf $@"
+    init $@
+
+	if [[ $exitscript -eq 1 ]]; then
+		echo "Exiting Sweep Script."
+		return;
+	fi
+
+    while [[ $connattmps -lt $maxconnretry ]];
+    do
+        echo Calling local hackrfinfo 
+        
+        hrfstat=$(hackrfinfo)
+
+        echo "init status ${hrfstat}"
+        if [[ $hrfstat == *ReadyToConnect* ]]; then
+            echo "HackRF connecting... - break."
+            break
+        elif [[ $hrfstat == *Disconnected* ]]; then
+            echo "HackRF device disconnected... retry in 5"
+            sleep 5
+        elif [[ $hrfstat == *Busy* ]]; then
+            echo "HackRF already connected - exiting"
+            return
+        else
+            echo "Status not deterministic or of unknown deterministic state. $hrfstat"
+        fi
+        ((connattmps++))
+        echo "connection attemps ${connattmps}"
+        if [[ $connattmps -eq $((maxconnretry-1)) ]]; then
+            echo "Giving up after ${connattmps} connection attemps."
+            return
+        fi
+#sleep 5
+    done
+       
+	startingup
+    echo "Outputting to $logfile"
+
+    # Sweep
+	#$sweepcmd=$(watch 3 cat /var/run/sweep*; ls -al $logfile)
+
+#( hackrf_sweep -f 350:5600  2>/dev/null & echo $! >&3 ) 3>pid | awk -F'[ ,]+' '/ -[0-4][0-9]{1}.[0-9]{2}/ {print $2, $3, $4, $7, $8, $9, $10}' > $logfile &
+
+#	echo "cmd pid $!"
+#	hpid=$(ppid $!)
+#	echo "hpid $hpid"
+#kill $(<pid)
+#	echo "hackrf pid $pid"
+#	echo $pid >> $hrfpidfile
+#	hrfpid=$(ppid $pid)
+#	echo "phrfpid $hrfpid"
+
+	hackrf_sweep -f 350:5600  2>/dev/null > >(awk -F'[ ,]+' '/ -[0-4][0-9]{1}.[0-9]{2}/ {print $2, $3, $4, $7, $8, $9, $10}' > $logfile )&
+	#. $sweepcmd &
+    echo "hackrf_sweep $!"
+	hrfpid=$!
+#hrfpid=$(ppid $!) 
+	echo "hrfpid $hrfpid"
+	echo $hrfpid >> $hrfpidfile
+    
+    # Watch output file
+#. $(watch 2 ls -alrt $logfile)&
+#echo "watch pid $!"
+#echo $(ppid $!) >> $hrfpidfile
+#echo "watch pid $watchpid"
+
+    # Tail output file in the foreground
+    echo "tail -f ${logfile} "
+#. $(tail -f ${logfile})&
+    tail -f ${logfile} &
+    echo $! >> $hrfpidfile
+
+    echo "Started Sweep as pid: $hrfpid tail: $!"
+    ((conn++))
+
+    sleep 5
+    while [[ -f $hrfpidfile ]] && [[ ! -z $(grep '[^[:space:]]' $hrfpidfile) ]] 
+    do
+        hrfstat=$(hackrfinfo)
+        echo "mon stat ${hrfstat}"
+        
+        if [[ $hrfstat == *Busy* ]]; then
+            echo "sweep running... ${logfile}"
+        elif [[ $hrfstat == *Disconnected* ]]; then 
+            echo "sweep disconnected - try again in 5"
+        elif [[ $hrfstat == *ReadyToConnect* ]]; then
+            echo "hrf = ReadyToConnect"
+			ksweep
+            if [[ ! -f $hrfpidfile ]]; then
+# || [[ -z $(grep '[^[:space:]]' $hrfpidfile) ]]; then
+#                echo "killing sweep and tail jobs"
+#    ksweep all
+                echo "restarting sweep $title"
+                sleep 2
+                sweep $title &
+                echo "new sweep pid $!"
+                return
+           	fi
+        fi
+		sleep 5
+    done
+}
+
+ksweep()
+{
+	exitscript=1
+	echo "ksweep $1 $hrfpidfile"
+	if [[ -f "$hrfpidfile" ]]; then # && [[ ! -z $(grep '[^[:space:]]' $hrfpidfile) ]]; then
+		echo "found $hrfpidfile"
+		for pf in `cat $hrfpidfile`;
+		do
+    		kill -9 "$pf"
+    		echo kill -9 "$pf"
+		done
+	
+    	rm $hrfpidfile
+	fi
+	
+	if [[ ! -z $1 ]] && [[ "$1" == "all" ]]; then
+		. ~/.alias
+		kp tail "&&"
+		kp sweep "&&"
+	fi
+
+}
+
+echo "sweep"
+sweepf $@
+

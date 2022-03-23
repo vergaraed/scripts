@@ -1,0 +1,31 @@
+#!/bin/bash
+
+declare -a procs=("auditd" "cloudphotod" "wifip2pd" "ScopedBookmarkAgent"
+"LookupViewService" "contactsdonationagent" "sociallayerd"
+"microstackshot" "applessdstatistics" "photoanalysisd" "DFRSystemExtra"
+"transparencyd" "mediaanalysisd" "recentsd" "webinspectord" "PodcastContentService"
+"DataDetectorsSourceAccess" "periodic-wrapper" "media-indexer" "spindump_agent"
+"spindump" "iCloudHelper" "proactiveeventtrackerd" "mobileactivationd" "SiriNCService"
+"CAReportingService" "promotedcontentd" "systemstats" "sysmond" 
+"amsengagementd" "MirrorDisplays" "AirPlayUIAgent" "askpermissiond" "icdd" "cloudpaird" "Siri" "distnoted")
+export EPTOK=true
+echo "$EPTOK"
+. $XHOME/.alias
+
+while [ "$EPTOK" = true ];
+do
+	for proc in "${procs[@]}";
+	do
+		echo $proc
+		kp $proc
+		#kpid=`pgrep $proc`
+		#echo "kpid=`pgrep $proc`"
+		
+		#echo "KILLING $proc $kpid"
+		#if [ ! -z $kpid ]; then
+			#kill -9 $kpid
+		#fi
+		
+	done
+	#sleep 2
+done
