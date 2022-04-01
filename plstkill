@@ -1,31 +1,52 @@
 #!/bin/bash
 
-declare -a procs=("auditd" "cloudphotod" "wifip2pd" "ScopedBookmarkAgent"
-"LookupViewService" "contactsdonationagent" "sociallayerd"
-"microstackshot" "applessdstatistics" "photoanalysisd" "DFRSystemExtra"
-"transparencyd" "mediaanalysisd" "recentsd" "webinspectord" "PodcastContentService"
-"DataDetectorsSourceAccess" "periodic-wrapper" "media-indexer" "spindump_agent"
-"spindump" "iCloudHelper" "proactiveeventtrackerd" "mobileactivationd" "SiriNCService"
-"CAReportingService" "promotedcontentd" "systemstats" "sysmond" 
-"amsengagementd" "MirrorDisplays" "AirPlayUIAgent" "askpermissiond" "icdd" "cloudpaird" "Siri" "distnoted")
+declare -a procs=("AirPlayUIAgent" "airportd" "auditd" "cloudd" "cloudpaird" "cloudphotod" "commcenter"  "devicecheckd" 
+"DictionaryServiceHelper" "distnoted" "EscrowSecurityAlert" "fseventsd" "wifip2pd" "ScopedBookmarkAgent" 
+"LinkedNotesUIService" "LookupViewService" "contactsdonationagent" "sociallayerd" "microstackshot" 
+"applessdstatistics" "opendirector" "photoanalysisd" "DFRSystemExtra" "transparencyd" "mediaanalysisd" "recentsd" 
+"webinspectord" "icdd" "itunescloudd" "PodcastContentService" "DataDetectorsSourceAccess" "periodic-wrapper"
+"mdsync" "mapspushd" "media-indexer" "spindump_agent" "spindump" "storeaccountd" "iCloudHelper" "proactiveeventtrackerd" "promotedcontentd"
+"mobileactivationd" "SiriNCService" "tccd" "trustd" "thermalmonitord" "CAReportingService" "logd" "promotedcontentd" "systemstats" "sysmond" "AirPlayUIAgent" "askpermissiond" "icdd" "cloudpaird" "Siri" 
+"notifyd" )
+declare -a killprocbg=("amsengagementd" "MirrorDisplays" "watchdog" "remoted" "bird")
+
 export EPTOK=true
 echo "$EPTOK"
-. $XHOME/.alias
 
+echo "XHOME  $XHOME"
+. $XHOME/.zshrc
+echo "XHOME  $XHOME"
+env > envaft.out
+
+echo "PTH $PATH"
+echo "kp path $(`whereis kp`)"
+echo "kp pth2 $(which kp)"
+echo  "1  `whereis kp`"
+echo  "2  $(`whereis kp`)"
+echo  "3  $(whereis kp)"
+
+sleep 2
+procpid=0
 while [ "$EPTOK" = true ];
 do
+#	for procbg in "${killprocbg[@]}";
+	#do
+		#sleep 3
+		#echo "BG KILLING $procbg $procpid" 
+        #echo pid $procpid
+		#if [[ "$procpid" -ne "0" ]] && [[ "$procpid" -eq "$(pgrep ${proc})" ]]; then
+			#echo "Skip pid $procpid"
+		#else
+			#. kp $procbg
+			#procpid=$!
+			#echo "KILLING $procbg $procpid"
+		#fi
+	#done
+	#continue
 	for proc in "${procs[@]}";
 	do
-		echo $proc
+		echo kp ${proc}
 		kp $proc
-		#kpid=`pgrep $proc`
-		#echo "kpid=`pgrep $proc`"
-		
-		#echo "KILLING $proc $kpid"
-		#if [ ! -z $kpid ]; then
-			#kill -9 $kpid
-		#fi
-		
+		echo "KILLING $procbg $procpid"
 	done
-	#sleep 2
 done

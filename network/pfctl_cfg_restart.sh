@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 
 declare -A pfKVpr
 declare cfgFileNm=/etc/pf.conf

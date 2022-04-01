@@ -51,6 +51,10 @@ function ppid()
     echo $(ps -p ${cpid:-$$} -o ppid=)
 }
 
+# implementing associative arrays for bash v3.0 <
+# usage: 
+#		idx=( eItm1 eItm2 ) && _enum "${idx[@]}"
+
 function  _enum()
 {
    ## void
@@ -60,7 +64,6 @@ function  _enum()
 
    local list=("$@")
    local len=${#list[@]}
-
    for (( i=0; i < $len; i++ )); do
       eval "${list[i]}=$i"
    done

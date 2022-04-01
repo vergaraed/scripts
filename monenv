@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 # The environ style is used when completing for `sudo'.
 # It is set to an array of
 # `VAR=value' assignments to be exported into the

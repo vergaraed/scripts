@@ -14,8 +14,8 @@ echo Every:     $tmr
 #done
 while :; 
 do 
-    cmd=("$1")
-   cmd+=("$args")
+  # cmd=("$1")
+  # cmd+=("$args")
     echo "run ${cmd}"
     $cmd 
     echo `date`;
